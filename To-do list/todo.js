@@ -70,6 +70,17 @@ function createStore(reducer, initialState){
       }
       return state;
     }
+    function subscribe(callbackFn){
+      subscribers.push(callbackFn);
+
+      return function unsubscribe{
+        const nodeIndex = subscribers.indexOf(callbackFn);
+        if(nodeIndex >= 0){
+          subscribers.splice(nodeIndex, 1);
+        }
+      }
+
+    }
 
     
 
