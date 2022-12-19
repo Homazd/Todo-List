@@ -183,6 +183,29 @@ return typeof inp === "function";
 function isObject(inp){
 return kindOf(inp) === "object";
 }
+
+
+function taskReducer(state = [], action){
+  if(action.type === "ADD"){
+    const id = Math.random().toString(16).slice(2);
+    return [
+      ...state,
+      {
+        id,
+        title: action.payload.title;
+      }
+    ]
+  }
+
+  else if(action.type === "Delete"){
+    const id = action.payload.id;
+    const newlist = state.filter((task) => task.id !== id);
+    return newlist;
+  }
+  else return state;
+}
+
+
 // Create a "close" button and append it to each list item
 var myNodelist = document.getElementsByTagName("LI");
 var i;
