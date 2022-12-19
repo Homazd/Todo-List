@@ -45,6 +45,21 @@ function createStore(reducer, initialState){
         if(!isInitType && !("target" in action)){
             throw new ActionHasNoTarget();
         }
+        
+        if(isDispatching){
+            throw new Error(`Cann't handle any other actions while processing.`)
+        }
+
+        try{
+            isDispatching = true;
+            state = reducer(state, action);
+        } finally {
+            isDispatching = false;
+            broadcast();
+        }
+
+
+
 
     }
 }
