@@ -192,7 +192,7 @@ function taskReducer(state = [], action){
       ...state,
       {
         id,
-        title: action.payload.title;
+        title: action.payload.title,
       }
     ]
   }
@@ -204,6 +204,19 @@ function taskReducer(state = [], action){
   }
   else return state;
 }
+
+const counterValue = localStorage.getItem("counter");
+console.log({counterValue,});
+
+const counterInitialState = counterValue ? Number(counterValue) : 0;
+
+function counterReducer(state = counterInitialState, action){
+  if(action.type = "INC") return state + 1;
+  if(action.type = "DEC") return state - 1;
+  return state;
+}
+
+
 
 
 // Create a "close" button and append it to each list item
