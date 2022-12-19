@@ -1,3 +1,26 @@
+
+
+// Create Store 
+
+function createStore(reducer, initialState){
+    if(!isFunction(reducer)){
+        throw new Error(`Reducer should be a function but it's got ${kindOf(reducer)}`)
+    }
+    if(isFunction(initialState)){
+        throw new Error(`Initial State can not be function!`)
+    }
+}
+
+function kindOf(inp){
+    return Object.prototype.toString.call(inp).slice(8, -1).toLowerCase();
+}
+function isFunction(inp){
+return typeof inp === "function";
+}
+
+function isObject(inp){
+return kindOf(inp) === "object";
+}
 // Create a "close" button and append it to each list item
 var myNodelist = document.getElementsByTagName("LI");
 var i;
