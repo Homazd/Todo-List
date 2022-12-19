@@ -1,5 +1,23 @@
 
+class ActionIsNotAnObject extends Error {
+    constructor(action){
+        super(`Action should be an object, but it has got ${kindOf(action)}`);
+        this.name = "ActionIsNotAnObject";
+    }
+}
+class ActionHasNoType extends Error{
+    constructor(){
+        super(`Action should have type property.`)
+        this.name = "ActionHasNoType";
+    }
+}
 
+class ActionHasNoTarget extends Error{
+    constructor(){
+        super(`Action should have target property.`)
+        this.name = "ActionHasNoTarget";
+    }
+}
 // Create Store 
 
 function createStore(reducer, initialState){
@@ -8,6 +26,26 @@ function createStore(reducer, initialState){
     }
     if(isFunction(initialState)){
         throw new Error(`Initial State can not be function!`)
+    }
+
+    let state = initialState;
+    let subscribers = [];
+    let isDispatching = false;
+
+    function dispatch(action){
+        if(!isObject(action)){
+          throw new ActionIsNotAnObject(action);
+        }
+
+        if(!("type" in action)){
+            throw new ActionHasNoType();
+        }
+
+        const isInitType = action.type === "@INIT";
+        if(!isInitType && !("target" in action)){
+            throw new ActionHasNoTarget();
+        }
+
     }
 }
 
