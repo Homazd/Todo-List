@@ -64,6 +64,14 @@ function createStore(reducer, initialState){
             subscribe();
         }
     }
+    function getState(){
+      if(isDispatching){
+       throw new Error(`Some Reducers may be updating and are busy. please wait...`);
+      }
+      return state;
+    }
+
+    
 
     
 }
