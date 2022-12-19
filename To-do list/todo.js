@@ -57,11 +57,15 @@ function createStore(reducer, initialState){
             isDispatching = false;
             broadcast();
         }
-
-
-
-
     }
+
+    function broadcast(){
+        for (const subscriber of subscribers){
+            subscribe();
+        }
+    }
+
+    
 }
 
 function kindOf(inp){
