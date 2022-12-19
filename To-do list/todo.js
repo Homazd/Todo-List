@@ -73,18 +73,23 @@ function createStore(reducer, initialState){
     function subscribe(callbackFn){
       subscribers.push(callbackFn);
 
-      return function unsubscribe{
+      return function unsubscribe(){
         const nodeIndex = subscribers.indexOf(callbackFn);
         if(nodeIndex >= 0){
           subscribers.splice(nodeIndex, 1);
         }
       }
-
     }
 
-    
+    dispatch({
+      type: "@INIT"
+    })
 
-    
+    return {
+      dispatch,
+      getState,
+      subscribe,
+    }
 }
 
 function kindOf(inp){
