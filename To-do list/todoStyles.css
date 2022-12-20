@@ -1,8 +1,6 @@
-
 body{
   text-align: center;
   height: 100vh;
-
   background: #42894b;
 }
 
@@ -89,7 +87,7 @@ body{
   padding : 5px;
 }
 
-.todo-div .todo-check{
+.todo-div .check{
   border: seagreen solid;
   float: left;
   width: 15px;
