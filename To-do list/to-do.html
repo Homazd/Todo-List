@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -7,22 +8,21 @@
     <link rel="stylesheet" href="todoStyles.css">
     <title>Document</title>
 </head>
-<body>
-    <div id="myDIV" class="header">
-        <h2>My To Do List</h2>
-        <input type="text" id="myInput" placeholder="Task to be done...">
-        <span onclick="newElement()" class="addBtn">Add</span>
-      </div>
-      
-      <ul id="myUL">
-        <li>take a bath</li>
-        <li class="checked">Pay bills</li>
-        <li>Meet Dentist</li>
-        <li>Buy eggs</li>
-        <li>Read a book</li>
-        <li>watch fast and furious!</li>
-      </ul>
-      <script src="todo.js"></script>
-</body>
-</html>
 
+<body>
+
+<div class="container">
+  <div id="newTask">
+        <input type="text" name="task" id="myInput" placeholder="Please Write a task...">
+    
+    <button id="addBtn">Add</button>
+  </div>
+
+    <div id="Todo-Tasks">
+    </div>
+  </div>
+
+    <script src="todo.js"></script>
+</body>
+
+</html>

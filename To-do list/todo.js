@@ -1,276 +1,424 @@
-
 class ActionIsNotAnObject extends Error {
-    constructor(action){
-        super(`Action should be an object, but it has got ${kindOf(action)}`);
-        this.name = "ActionIsNotAnObject";
-    }
+  constructor(action) {
+    super(`Action should be an object, but it has got ${kindOf(action)}`);
+    this.name = "ActionIsNotAnObject";
+  }
 }
-class ActionHasNoType extends Error{
-    constructor(){
-        super(`Action should have type property.`)
-        this.name = "ActionHasNoType";
-    }
+class ActionHasNoType extends Error {
+  constructor() {
+    super(`Action should have type property.`)
+    this.name = "ActionHasNoType";
+  }
 }
 
-class ActionHasNoTarget extends Error{
-    constructor(){
-        super(`Action should have target property.`)
-        this.name = "ActionHasNoTarget";
-    }
+function createStore(reducer, initalstate) {
+  if (!isFunction(reducer)) {
+    throw new Error(`Reducer should be a function but it has got ${kindOf(reducer)}`)
 }
-// Create Store 
+if (isFunction(initalstate)) {
+    throw new Error(`initialstate can't be a function!`)
+}
 
-function createStore(reducer, initialState){
-    if(!isFunction(reducer)){
-        throw new Error(`Reducer should be a function but it's got ${kindOf(reducer)}`)
-    }
-    if(isFunction(initialState)){
-        throw new Error(`Initial State can not be function!`)
-    }
+  let state = initalstate;
+  let isDispached = false;
+  let subscribers = [];
 
-    let state = initialState;
-    let subscribers = [];
-    let isDispatching = false;
+  function dispatch(action) {
+    if (!isObject(action)) {
+      throw new ActionIsNotAnObject();
+  }
+      if (!('type' in action)) {
+          throw new ActionHasNoType();
+      }
 
-    function dispatch(action){
-        if(!isObject(action)){
-          throw new ActionIsNotAnObject(action);
-        }
+      if (isDispached) {
+          throw new Error('cannot do anything while processing');
+      }
 
-        if(!("type" in action)){
-            throw new ActionHasNoType();
-        }
+      try {
+          isDispached = true;
+          state = reducer(state, action);
 
-        const isInitType = action.type === "@INIT";
-        if(!isInitType && !("target" in action)){
-            throw new ActionHasNoTarget();
-        }
-        
-        if(isDispatching){
-            throw new Error(`Cann't handle any other actions while processing.`)
-        }
+      } finally {
+          isDispached = false;
+          broadcast();
+      }
+  }
 
-        try{
-            isDispatching = true;
-            state = reducer(state, action);
-        } finally {
-            isDispatching = false;
-            broadcast();
-        }
-    }
+  function broadcast() {
+      for (const subscribe of subscribers) {
+          subscribe();
+      }
+  }
 
-    function broadcast(){
-        for (const subscriber of subscribers){
-            subscribe();
-        }
-    }
-    function getState(){
-      if(isDispatching){
-       throw new Error(`Some Reducers may be updating and are busy. please wait...`);
+  function subscribe(listener) {
+      subscribtions.push(listener);
+
+      return function unsubscribe() {
+          let listenerIndex = subscribtions.indexOf(listener);
+          if (listenerIndex >= 0) {
+              subscribtions.splice(listenerIndex, 1);
+          }
+      }
+  }
+
+  dispatch({
+      type: '@INIT'
+  })
+
+  function getState() {
+      if (isDispached) {
+          throw new Error('cannot show state while processing');
       }
       return state;
-    }
-    function subscribe(callbackFn){
-      subscribers.push(callbackFn);
+  }
 
-      return function unsubscribe(){
-        const nodeIndex = subscribers.indexOf(callbackFn);
-        if(nodeIndex >= 0){
-          subscribers.splice(nodeIndex, 1);
-        }
-      }
-    }
-
-    dispatch({
-      type: "@INIT"
-    })
-
-    return {
+  return {
       dispatch,
       getState,
       subscribe,
-    }
+  }
+
 }
 
-function shapeAssertionReducers(reducers){
+function shapeAssertionReducers(reducers) {
   Object.entries(reducers).forEach(([reducerKey, reducer]) => {
-    const action = {type: "@INIT", target : "reducerKey"}
+    const action = { type: "@INIT" };
     const state = reducer(undefined, action);
-
-    if(typeof state === "undefined"){
-      throw new Error(`Reducer for key ${reducerKey} return undefined for the action ${JSON.stringify(action)}`)
+state
+    if (typeof state === "undefined") {
+      throw new Error(
+        `Reducer for key ${reducerKey} returns undefined for action ${JSON.stringify(
+          action
+        )}`
+      );
     }
 
     const randomActionType = Math.random().toString(16).slice(2);
-    const secondAction = {type: randomActionType, target: reducerKey};
+    const secondAction = { type: randomActionType };
     const secondState = reducer(undefined, secondAction);
-
-    if(typeof secondState === "undefined"){
-      throw new Error(`Reducer for the key ${reducerKey} returns undefined for the action ${JSON.stringify(secondAction)}`);
+    if (typeof secondState === "undefined") {
+      throw new Error(
+        `Reducer for key ${reducerKey} returns undefined for action ${JSON.stringify(
+          secondAction
+        )}`
+      );
     }
-  })
+  });
 }
-
-function combineReducers(reducers){
-  let finalReducers = {};
-
-  for (const reducerKey in reducers){
-    const reducer = reducers[reducerKey]
-    if(isFunction(reducer)){
-      finalReducers[reducerKey] = reducer;
-    }
-
+function combineReducers(reducers) {
+  if (!isObject(reducers)) {
+      throw new Error('reducers should be in the form of objects.');
   }
-  let shapeError;
+  let finalreducers = {};
+  for (const reducerKey in reducers) {
+      const reducer = reducers[reducerKey];
 
+      if (isFunction(reducer)) {
+          finalreducers[reducerKey] = reducer;
+      }
+  }
+
+  let shapeError;
   try {
-    shapeAssertionReducers(finalReducers);
-  } catch (e) {
-    shapeError = e;
+      shapeAssertionReducers(finalreducers);
+  } catch (error) {
+      shapeError = error;
   }
 
   return (state = {}, action) => {
-    if(shapeError){
-      throw shapeError;
-    }
-    let hasChanged = false;
-    const nextState = state;
-    if(action.type === "@INIT" || action.target === "*"){
-    for (const reducerKey in finalReducers){
-      const reducer = finalReducers[reducerKey];
-      const reducerState = state[reducerKey] || undefined;
-      delete action.target;
-      const newReducerState = reducer(reducerState, action);
-
-      if(typeof newReducerState === "undefined"){
-        throw new Error(`Reducer for the key ${reducerKey} returns undefined for the action's type ${action.type}`)
-      }
-      hasChanged = hasChanged || newReducerState !== reducerState;
-      nextState[reducerKey] = newReducerState;
-    }
-  } else{
-    const reducerKey = action.target;
-    if(!(reducerKey in finalReducers)){
-      throw new Error(`Target ${reducerKey} can't be found in finalReducers.`)
-    }
-    const reducer = finalReducers[reducerKey];
-      const reducerState = state[reducerKey] || undefined;
-      delete action.target;
-      const newReducerState = reducer(reducerState, action);
-
-      if (typeof newReducerState === "undefined") {
-        throw new Error(
-          `Reducer ${reducerKey} returns undefined for action's type ${action.type}.`
-        );
+      if (shapeError) {
+        throw new shapeError
       }
 
-      hasChanged = reducerState !== newReducerState;
+      let nextState = state;
+      let hasChanged = false;
+              
+      let targetReducer = finalreducers[target];
+      let reducerState = state[target] || undefined;
+      let reducerNewState = targetReducer(reducerState, action)
+      hasChanged = hasChanged || reducerNewState !== reducerState;
+      nextState[target] = hasChanged ? reducerNewState : reducerState;
+      }}
 
-      if (hasChanged) nextState[reducerKey] = newReducerState;
-  }
-return hasChanged ? nextState : state;
-};
+
+function kindOf(inp) {
+  return Object.prototype.toString.call(inp).slice(8, -1).toLowerCase();
 }
-
-
-function kindOf(inp){
-    return Object.prototype.toString.call(inp).slice(8, -1).toLowerCase();
-}
-function isFunction(inp){
-return typeof inp === "function";
-}
-
 function isObject(inp){
-return kindOf(inp) === "object";
+  return kindOf(inp) === "object"
 }
 
-
-function taskReducer(state = [], action){
-  if(action.type === "ADD"){
-    const id = Math.random().toString(16).slice(2);
-    return [
-      ...state,
-      {
-        id,
-        title: action.payload.title,
-      }
-    ]
-  }
-
-  else if(action.type === "Delete"){
-    const id = action.payload.id;
-    const newlist = state.filter((task) => task.id !== id);
-    return newlist;
-  }
-  else return state;
+function isFunction(inp){
+  return typeof inp === "function"
 }
 
-const counterValue = localStorage.getItem("counter");
-console.log({counterValue,});
+function taskReducer(initalstate = [], action) {
+  let state = [...initalstate];
+  if(action.type === "ADD") {
+  state.push(action.payload);
+  }
 
-const counterInitialState = counterValue ? Number(counterValue) : 0;
-
-function counterReducer(state = counterInitialState, action){
-  if(action.type = "INC") return state + 1;
-  if(action.type = "DEC") return state - 1;
+  if(action.type === "DELETE") {
+          state = state.filter((i) => {
+              if(i.id !== action.payload.id)
+                  return i;
+          })
+        }
+  
   return state;
 }
 
+let store = createStore(taskReducer, []);
 
+const counterValue = localStorage.getItem("Task");
+console.log({ counterValue, });
 
-
-// Create a "close" button and append it to each list item
-var myNodelist = document.getElementsByTagName("LI");
-var i;
-for (i = 0; i < myNodelist.length; i++) {
-  var span = document.createElement("SPAN");
-  var txt = document.createTextNode("\u00D7");
-  span.className = "close";
-  span.appendChild(txt);
-  myNodelist[i].appendChild(span);
-}
-
-// Click on a close button to hide the current list item
-var close = document.getElementsByClassName("close");
-var i;
-for (i = 0; i < close.length; i++) {
-  close[i].onclick = function() {
-    var div = this.parentElement;
-    div.style.display = "none";
+function getId(state) {
+  if(!state.length) return 1;
+  else {
+    state[state.length].id + 1
   }
 }
 
-// Add a "checked" symbol when clicking on a list item
-var list = document.querySelector('ul');
-list.addEventListener('click', function(ev) {
-  if (ev.target.tagName === 'LI') {
-    ev.target.classList.toggle('checked');
+let addbtn = document.getElementById('addBtn')
+
+addbtn.addEventListener('click', () => {
+  let textInput = document.getElementById('myInput');
+  if (textInput.value.length) {
+      let stateBefore = store.getState().filter(i => i.task);
+      let stateAfter = store.getState();
+      let task = textInput.value;
+      let id = getId(stateAfter);
+      store.dispatch({
+        type: 'ADD',
+        payload: { task,
+        id,
+        complete: false,
+      }});
+      
+      renderTasks(stateBefore);
+      textInput.value = null;
   }
-}, false);
+}, false)
 
-// Create a new list item when clicking on the "Add" button
-function newElement() {
-  var li = document.createElement("li");
-  var inputValue = document.getElementById("myInput").value;
-  var t = document.createTextNode(inputValue);
-  li.appendChild(t);
-  if (inputValue === '') {
-    alert("You must write something!");
-  } else {
-    document.getElementById("myUL").appendChild(li);
-  }
-  document.getElementById("myInput").value = "";
 
-  var span = document.createElement("SPAN");
-  var txt = document.createTextNode("\u00D7");
-  span.className = "close";
-  span.appendChild(txt);
-  li.appendChild(span);
 
-  for (i = 0; i < close.length; i++) {
-    close[i].onclick = function() {
-      var div = this.parentElement;
-      div.style.display = "none";
-    }
+
+
+function renderTasks(stateBefore = []) {
+  let tasks = store.getState();
+  let todolist = document.getElementById('Todo-Tasks');
+
+  for (let i = 0; i < tasks.length; i++) {
+    const taskElm = tasks[i];
+      if (i >= stateBefore.length || !stateBefore.includes(taskElm)) {
+
+          let div = document.createElement('div');
+          div.classList.add('todo-div')
+          div.id = taskElm.id;
+
+          let checkbox = document.createElement('input');
+          checkbox.type = 'checkbox'
+          checkbox.classList.add('todo-check');
+          checkbox.id = 'todo-check';
+        
+        
+         // Add a "checked" symbol when clicking on a list item
+
+          checkbox.addEventListener('change', (ev) => {
+              let target = document.getElementById(taskElm.id)
+
+              if (taskElm.complete) {
+                  store.dispatch({ type: "Completed", payload: { id: taskElm.id } })
+                  ev.target.toggle('checked');
+                  
+              }
+          })
+
+          
+          let taskText = document.createElement('span');
+          taskText.textContent = taskElm.task;
+          let deleteBtn = document.createElement('button');
+          // span.className = "close"
+          deleteBtn.textContent = '\u00D7';
+
+          deleteBtn.addEventListener('click', () => {
+              store.dispatch({ type: 'DELETE', payload: { id: taskElm.id } });
+              let elmTask = document.getElementById(taskElm.id)
+              let parentNode = elmTask.parentElement;
+
+              parentNode.removeChild(elmTask);
+          },)
+
+          div.appendChild(checkbox);
+          div.appendChild(taskText);
+          div.appendChild(deleteBtn);
+
+          todolist.append(div);
+        } 
   }
 }
+
+let unsubscribe = store.subscribe(() => {
+  console.log(store.getState())
+});
+
+
+
+
+
+
+// // function getId(state) {
+// //   return state.todos.reduce((maxId, todo) => {
+// //     return Math.max(todo.id, maxId)
+// //   }, -1) + 1
+// // }
+
+
+// function taskReducer(initialState = [], action) {
+//   switch (action.type) {
+//     case "ADD": 
+//       return [
+//         ...state,
+//         {
+//           ...action.payload,
+//         }
+//       ]
+    
+//     case "DELETE":
+
+//     state = state.filter((i) => {
+//     if(i.id !== action.payload.id)
+//     return i;
+//   })
+// }
+//       return state;
+// }
+
+// // let actions = {
+// //   addTodo: function(title) {
+// //     return {
+// //       type: 'ADD',
+// //       title: title,
+// //     }
+// //   },
+// //   deleteTodo: function(id) {
+// //     return {
+// //       type: 'DELETE',
+// //       id: id
+// //      }
+// //   }
+// // }
+
+// // const counterValue = localStorage.getItem("counter");
+// // console.log({ counterValue, });
+
+// // const counterInitialState = counterValue ? Number(counterValue) : 0;
+
+// // function counterReducer(state = counterInitialState, action){
+// //   if(action.type = "INC") return state + 1;
+// //   if(action.type = "DEC") return state - 1;
+// //   return state;
+// // }
+
+// const store = createStore(taskReducer, []);
+
+
+// let addbtn = document.getElementById('addbtn')
+
+// addbtn.addEventListener('click', () => {
+//     let textInput = document.getElementById('myInput');
+//     if (textInput.value.length) {
+//         let prevState = store.getState().filter(i => i.task);
+//         let currentStore = store.getState();
+//         let task = " " + textInput.value;
+//         let id = !currentStore.length ? 1 : currentStore[currentStore.length - 1].id + 1;
+//         let action = { type: 'ADD', payload: { task, id, } }
+//         store.dispatch(action);
+//         renderTasks(prevState);
+//         textInput.value = null;
+//     }
+// }, false)
+
+// // document.querySelector('.addBtn').addEventListener('click', function () {
+// //   let textInput = document.getElementById('myInput');
+// //   if(textInput.value.length){
+// //   let prevState = store.getState().filter((t) => t.task);
+// //   let currentState = store.getState();
+// //   let task = " " + textInput.value;
+// //   let id = !currentState.length ? 1 : currentState[currentState.length - 1].id + 1;
+
+//   // if (document.querySelector('#myDIV input').value.length == 0) {
+//   //   alert("Please Enter a Task");
+//   // }
+
+// //   store.dispatch({
+// //       type: "ADD",
+// //       payload:{
+// //         task,
+// //         id,
+// //       }
+// //     });
+  
+// //     renderTasks(prevState);
+// //     textInput.value = null;
+// //   }
+// // }, false)
+//     // document.querySelector('#Tasks-list').innerHTML += `
+//     //       <div class="task">
+//     //           <span id="taskname">
+//     //               ${document.querySelector('#myDIV input').value}
+//     //           </span>
+//     //           <button class="close">
+//     //               <i class="far fa-trash-alt"></i>
+//     //           </button>
+//     //       </div>
+// //       `;
+// //     //  let taskText = document.querySelectorAll("#taskname").innerHTML;
+// // let lastId = 0;
+// //     store.dispatch({
+// //       type: "ADD",
+// //       text: this.input.value,
+// //       id: lastId + 1,
+// //     });
+// // lastId++
+// //   }
+// //   renderTasks()
+// // })
+
+// /////////////////
+
+// ////////////////
+// // let addBtn = document.querySelector('addBtn');
+
+// // addBtn.addEventListener("click", () => {
+// //   if(this.input.value) {
+// //   dispatch({
+// //     type: "ADD",
+// //     text: this.input.value,
+// //   })
+// //   this.input.value ='';
+// // }
+// // })
+
+
+
+// // // // Click on a close button to hide the current list item
+// // var close = document.getElementsByClassName("close");
+// // var i;
+// // close.addEventListener("click", function() {
+// //   var div = this.parentElement;
+// //     // div.style.display = "none";
+// //     renderTask();
+// // })
+
+
+// // // Add a "checked" symbol when clicking on a list item
+// // var list = document.querySelector('ul');
+// // list.addEventListener('click', function(ev) {
+// //   if (ev.target.tagName === 'LI') {
+// //     ev.target.classList.toggle('checked');
+// //   }
+// // }, false);
+
